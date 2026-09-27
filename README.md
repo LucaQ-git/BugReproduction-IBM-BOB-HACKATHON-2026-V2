@@ -2,6 +2,14 @@
 
 > **IBM Bob Hackathon 2026 · Team Submission**
 
+🌐 **Live:** [https://bugrep-ai.linglao.org](https://bugrep-ai.linglao.org)
+
+**Team:**
+- Luca Quacquarelli
+- Parjad Minooei
+- Eman Butt
+- Vincent Lee
+
 BugRep-AI turns a plain-English bug report and a codebase into a verified, human-approved code repair — powered by IBM Bob agents, proven by real tests, and shareable to Jira, Slack, or Teams.
 
 ```
