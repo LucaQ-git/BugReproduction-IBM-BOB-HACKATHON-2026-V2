@@ -1,8 +1,8 @@
-bugrep-ai/node_modules
-bugrep-ai/runs
-bugrep-ai/.env
-bugrep-ai/server.log
-bugrep-ai/server-err.log
+node_modules
+runs
+.env
+server.log
+server-err.log
 .bob
 bob_sessions
 .git

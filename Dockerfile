@@ -6,11 +6,11 @@ RUN npm install -g bobshell@2.0.5
 WORKDIR /app
 
 # Install app dependencies
-COPY bugrep-ai/package*.json ./
+COPY package*.json ./
 RUN npm install --omit=dev
 
 # Copy app source
-COPY bugrep-ai/ .
+COPY . .
 
 ENV HOST=0.0.0.0
 ENV PORT=3000
