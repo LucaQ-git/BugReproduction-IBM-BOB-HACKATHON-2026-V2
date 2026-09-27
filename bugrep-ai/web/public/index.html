@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BugRep-AI</title>
+  <meta name="description" content="From bug report to verified repair: AI agents reproduce, repair and verify bugs, with human approval." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%237c5cff'/><stop offset='1' stop-color='%2322d3ee'/></linearGradient></defs><rect width='32' height='32' rx='8' fill='url(%23g)'/><path d='M11 13h10v7a5 5 0 0 1-10 0z M13 13a3 3 0 0 1 6 0 M8 17h3 M21 17h3 M9 23l2-1 M23 23l-2-1 M16 15v9' stroke='white' stroke-width='1.8' fill='none' stroke-linecap='round'/></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="bg-glow" aria-hidden="true"></div>
+  <div class="bg-grid" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <a class="brand" href="#/" aria-label="BugRep-AI home">
+      <span class="brand-mark"><svg viewBox="0 0 24 24"><use href="#i-bug"/></svg></span>
+      <span class="brand-text">BugRep<b>-AI</b></span>
+    </a>
+    <nav class="mainnav" aria-label="Main">
+      <a href="#/" data-view="home" class="active"><svg><use href="#i-folder"/></svg><span>Projects</span></a>
+      <a href="#runs" data-view="runs"><svg><use href="#i-clock"/></svg><span>Runs</span><em class="nav-badge hidden" id="nav-active"></em></a>
+      <a href="#agents" data-view="agents"><svg><use href="#i-bot"/></svg><span>Agents</span></a>
+      <a href="#integrations" data-view="integrations"><svg><use href="#i-plug"/></svg><span>Integrations</span></a>
+      <a href="#reports" data-view="reports"><svg><use href="#i-file"/></svg><span>Reports</span></a>
+    </nav>
+    <div class="topbar-right">
+      <span class="chip chip-muted" id="bob-chip"><span class="dot"></span>IBM Bob…</span>
+      <button class="icon-btn" id="btn-theme" title="Toggle theme" aria-label="Toggle theme"><svg><use href="#i-moon"/></svg></button>
+    </div>
+  </header>
+
+  <!-- ═════════ PROJECTS (home) ═════════ -->
+  <main id="view-home" class="view active">
+    <section class="hero">
+      <div class="hero-copy">
+        <span class="eyebrow"><svg><use href="#i-sparkle"/></svg> Autonomous bug repair · powered by IBM Bob</span>
+        <h1>BugRep-AI<br/><span class="grad-text">From bug report to verified repair.</span></h1>
+        <p class="lead">Describe a bug in plain English. AI agents find the defect, prove it with failing tests,
+          write a fix and prove it with the <b>same locked tests</b>. Nothing touches your code until you approve.</p>
+        <div class="hero-actions">
+          <button class="btn btn-primary btn-lg" id="btn-demo"><svg><use href="#i-play"/></svg> Run Live Demo</button>
+          <a class="btn btn-ghost btn-lg" href="#new-run"><svg><use href="#i-bug"/></svg> Analyze my code</a>
+        </div>
+        <div class="hero-proof">
+          <span><svg><use href="#i-shield"/></svg> Isolated sandbox copy</span>
+          <span><svg><use href="#i-lock"/></svg> Tests locked by SHA-256</span>
+          <span><svg><use href="#i-check"/></svg> Human approval required</span>
+        </div>
+      </div>
+      <div class="hero-visual" aria-hidden="true">
+        <div class="orbit">
+          <div class="agent-node n1"><svg><use href="#i-search"/></svg><span>Investigate</span></div>
+          <div class="agent-node n2"><svg><use href="#i-flask"/></svg><span>Reproduce</span></div>
+          <div class="agent-node n3"><svg><use href="#i-wrench"/></svg><span>Repair</span></div>
+          <div class="agent-node n4"><svg><use href="#i-share"/></svg><span>Share</span></div>
+          <div class="orbit-core"><div class="core-red">RED</div><svg class="core-arrow"><use href="#i-arrow"/></svg><div class="core-green">GREEN</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card new-run" id="new-run">
+      <div class="card-head"><div><h2>Analyze &amp; repair</h2><p class="muted">Choose code, describe the bug, pick an agent.</p></div></div>
+      <form id="run-form" autocomplete="off">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <label class="step-title">Choose code</label>
+            <div class="seg" role="tablist" id="source-tabs">
+              <button type="button" role="tab" class="seg-btn active" data-source="local"><svg><use href="#i-folder"/></svg> IDE Workspace</button>
+              <button type="button" role="tab" class="seg-btn" data-source="github"><svg><use href="#i-github"/></svg> GitHub</button>
+              <button type="button" role="tab" class="seg-btn" data-source="zip"><svg><use href="#i-upload"/></svg> Upload ZIP</button>
+            </div>
+            <div class="source-panel active" data-panel="local">
+              <div class="input-wrap"><svg><use href="#i-folder"/></svg><input id="local-path" type="text" placeholder="C:\path\to\your\project" spellcheck="false" /></div>
+              <p class="hint">The folder open in your IDE. BugRep works on a sandbox copy; nothing changes until you approve.</p>
+              <label class="check"><input type="checkbox" id="opt-writeback" /> <span>Write the approved repair back into this folder (originals are backed up)</span></label>
+            </div>
+            <div class="source-panel" data-panel="github">
+              <div class="row-2">
+                <div class="input-wrap grow"><svg><use href="#i-github"/></svg><input id="gh-url" type="text" placeholder="https://github.com/owner/repo" spellcheck="false" /></div>
+                <div class="input-wrap narrow"><svg><use href="#i-branch"/></svg><input id="gh-ref" type="text" placeholder="branch (optional)" spellcheck="false" /></div>
+              </div>
+              <p class="hint">Public repos work out of the box. For private repos set <code>GITHUB_TOKEN</code> in <code>.env</code>.</p>
+            </div>
+            <div class="source-panel" data-panel="zip">
+              <label class="dropzone" id="dropzone">
+                <input id="zip-input" type="file" accept=".zip,application/zip" hidden />
+                <div class="dz-icon"><svg><use href="#i-upload"/></svg></div>
+                <div class="dz-text"><b>Drop a .zip here</b> or click to browse</div>
+                <div class="dz-sub">Up to 60 MB · node_modules, .git and .env are ignored</div>
+              </label>
+              <div class="file-pill hidden" id="zip-pill"><svg><use href="#i-archive"/></svg><span id="zip-name"></span><span class="muted" id="zip-size"></span><button type="button" class="link" id="zip-clear">Remove</button></div>
+            </div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <label class="step-title" for="bug-input">Describe the bug</label>
+            <textarea id="bug-input" rows="4" placeholder="e.g. Invoice totals can become negative when customers use unusually large discounts. Totals should never be below zero and must be rounded to two decimals."></textarea>
+            <details class="more">
+              <summary><svg><use href="#i-chevron"/></svg> Expected behaviour / business rules <span class="muted">(optional)</span></summary>
+              <textarea id="rules-input" rows="3" placeholder="e.g. Totals never go below 0. Missing discount means 0%. Round to 2 decimals."></textarea>
+            </details>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <label class="step-title">AI agent</label>
+            <div class="agent-row">
+              <div class="select-wrap"><select id="opt-agent" aria-label="AI agent"><option value="bob">IBM Bob</option></select></div>
+              <div class="mode-radios" role="radiogroup" aria-label="Agent mode">
+                <label class="radio"><input type="radio" name="mode" value="single" checked /> <span>Single Agent</span></label>
+                <label class="radio disabled" title="Needs two or more operational agents"><input type="radio" name="mode" value="multi" disabled /> <span>Multi-Agent Review <em class="soon">coming soon</em></span></label>
+              </div>
+            </div>
+            <div class="options">
+              <label class="switch"><input type="checkbox" id="opt-tests" checked /><span class="track"></span><span>Include regression test in output</span></label>
+              <label class="switch"><input type="checkbox" id="opt-auto" /><span class="track"></span><span>Auto-approve verified repairs</span></label>
+            </div>
+          </div>
+        </div>
+        <div class="form-foot">
+          <p class="form-error hidden" id="form-error"></p>
+          <button class="btn btn-primary btn-lg" type="submit" id="btn-start"><svg><use href="#i-sparkle"/></svg> Analyze &amp; Repair</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <!-- ═════════ RUN ═════════ -->
+  <main id="view-run" class="view">
+    <div class="run-head">
+      <div class="run-head-left">
+        <a class="icon-btn" href="#runs" title="All runs" aria-label="All runs"><svg><use href="#i-back"/></svg></a>
+        <div>
+          <div class="run-title"><span id="run-source-label">…</span> <span class="status-pill" id="run-status">Starting</span></div>
+          <div class="run-meta"><span id="run-id"></span><span class="sep">·</span><span id="run-agent"></span><span class="sep">·</span><span id="run-elapsed">0s</span></div>
+        </div>
+      </div>
+      <div class="run-head-right">
+        <span class="demo-badge hidden" id="demo-badge"><svg><use href="#i-play"/></svg> Live demo</span>
+        <button class="btn btn-stop hidden" id="btn-stop"><svg><use href="#i-stop"/></svg> Stop Run</button>
+        <a class="btn btn-ghost" href="#/"><svg><use href="#i-plus"/></svg> New run</a>
+      </div>
+    </div>
+
+    <ol class="stepper" id="stepper" aria-label="Run progress"></ol>
+
+    <div class="run-grid">
+      <aside class="timeline card" id="timeline" aria-label="Pipeline stages"></aside>
+      <div class="run-main">
+        <section class="card now-card hidden" id="now-card" aria-live="polite"></section>
+        <section class="card bug-card"><div class="label-row"><span class="section-label">Bug report</span></div><p id="run-bug" class="bug-text"></p></section>
+        <section class="card console-card">
+          <div class="card-head compact">
+            <div class="label-row"><span class="live-dot" id="live-dot"></span><span class="section-label">Activity</span></div>
+            <button class="link" id="console-toggle">Collapse</button>
+          </div>
+          <div class="console" id="console" role="log"></div>
+        </section>
+        <div id="cards"></div>
+        <section class="card share-card hidden" id="share-card"></section>
+      </div>
+    </div>
+
+    <div class="approve-bar hidden" id="approve-bar" role="region" aria-label="Approve repair">
+      <div class="approve-inner">
+        <div class="approve-info">
+          <div class="approve-icon"><svg><use href="#i-shield"/></svg></div>
+          <div><b id="approve-title">Repair verified</b><div class="muted small" id="approve-sub">Review the diff, then approve or reject.</div></div>
+        </div>
+        <div class="approve-opts">
+          <button class="link" id="btn-view-diff">View Diff</button>
+          <label class="check small hidden" id="approve-wb-wrap"><input type="checkbox" id="approve-writeback" /> <span>Write to my folder</span></label>
+          <label class="check small"><input type="checkbox" id="approve-tests" checked /> <span>Include test</span></label>
+        </div>
+        <div class="approve-actions">
+          <button class="btn btn-danger-ghost" id="btn-reject"><svg><use href="#i-x"/></svg> Reject</button>
+          <button class="btn btn-success" id="btn-approve"><svg><use href="#i-check"/></svg> Approve</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ═════════ RUNS ═════════ -->
+  <main id="view-runs" class="view">
+    <div class="page-head"><div><h2>Runs</h2><p class="muted">Every run ends in an explicit state. Nothing retries automatically.</p></div>
+      <label class="check small"><input type="checkbox" id="runs-show-dismissed" /> <span>Show dismissed</span></label></div>
+    <div class="runs-table card" id="runs-table"></div>
+  </main>
+
+  <!-- ═════════ AGENTS ═════════ -->
+  <main id="view-agents" class="view">
+    <div class="page-head"><div><h2>AI agents</h2><p class="muted">IBM Bob is the operational agent. Other providers are shown for the roadmap and are never called.</p></div></div>
+    <div class="agent-grid" id="agent-grid"></div>
+    <section class="card info-card">
+      <h3>How multi-agent review will work</h3>
+      <div class="flow-mini">
+        <div><b>Investigators</b><span>A · B · C investigate independently</span></div><svg><use href="#i-arrow"/></svg>
+        <div><b>Compare findings</b><span>agreement on file / function</span></div><svg><use href="#i-arrow"/></svg>
+        <div><b>Repairers</b><span>each proposes a candidate</span></div><svg><use href="#i-arrow"/></svg>
+        <div><b>Test runner decides</b><span>same locked tests; no AI vote</span></div>
+      </div>
+      <p class="muted small">The orchestration interface is in place (<code>agents/index.js</code>). It turns on when two or more agents are operational.</p>
+    </section>
+  </main>
+
+  <!-- ═════════ INTEGRATIONS ═════════ -->
+  <main id="view-integrations" class="view">
+    <div class="page-head"><div><h2>Integrations</h2><p class="muted">Optional. Configured on the server in <code>.env</code>; secrets never reach the browser. Delivery never changes a repair's status.</p></div></div>
+    <div class="integ-grid" id="integ-grid"></div>
+  </main>
+
+  <!-- ═════════ REPORTS ═════════ -->
+  <main id="view-reports" class="view">
+    <div class="page-head"><div><h2>Reports</h2><p class="muted">Evidence reports (Markdown + JSON) for every finished run.</p></div></div>
+    <div class="runs-table card" id="reports-table"></div>
+  </main>
+
+  <!-- Demo modal -->
+  <div class="modal hidden" id="demo-modal" role="dialog" aria-modal="true" aria-label="Live demo">
+    <div class="modal-card demo-card">
+      <div class="modal-head"><h3><svg><use href="#i-play"/></svg> Live demo</h3><button class="icon-btn" data-close="demo-modal" aria-label="Close"><svg><use href="#i-x"/></svg></button></div>
+      <div class="demo-body">
+        <p class="muted">The demo runs the real pipeline with <b>IBM Bob</b> on a controlled shop-cart project with a known pricing bug. Preflight uses no Bob calls.</p>
+        <ul class="checklist" id="demo-checks"><li class="muted">Running preflight checks…</li></ul>
+        <div class="demo-verdict hidden" id="demo-verdict"></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" id="btn-demo-reset"><svg><use href="#i-refresh"/></svg> Reset Demo</button>
+        <button class="btn btn-primary" id="btn-demo-start" disabled><svg><use href="#i-play"/></svg> Start Live Demo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Report modal -->
+  <div class="modal hidden" id="report-modal" role="dialog" aria-modal="true" aria-label="Run report">
+    <div class="modal-card">
+      <div class="modal-head"><h3>Run report</h3>
+        <div class="modal-actions"><a class="btn btn-ghost btn-sm" id="report-dl" href="#" download><svg><use href="#i-download"/></svg> .md</a>
+          <button class="icon-btn" data-close="report-modal" aria-label="Close"><svg><use href="#i-x"/></svg></button></div></div>
+      <article class="md" id="report-body"></article>
+    </div>
+  </div>
+
+  <div class="toast hidden" id="toast"></div>
+
+  <!-- ───────────── Icons ───────────── -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-bug" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2l1.9 1.9M16 2l-1.9 1.9M9 7.1V6a3 3 0 1 1 6 0v1.1"/><path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6z"/><path d="M12 20v-9M6.5 13H3M21 13h-3.5M6 9.5 3.5 8M18 9.5 20.5 8M6.4 17 4 18.5M17.6 17 20 18.5"/></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.14v13.72a1 1 0 0 0 1.52.85l11.03-6.86a1 1 0 0 0 0-1.7L9.52 4.29A1 1 0 0 0 8 5.14z"/></symbol>
+      <symbol id="i-sparkle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></symbol>
+      <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></symbol>
+      <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+      <symbol id="i-flask" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v6L4.5 18.5A2 2 0 0 0 6.2 21.5h11.6a2 2 0 0 0 1.7-3L14 9V3"/><path d="M7 15h10"/></symbol>
+      <symbol id="i-wrench" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></symbol>
+      <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+      <symbol id="i-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></symbol>
+      <symbol id="i-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+      <symbol id="i-github" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.41-2.69 5.38-5.25 5.67.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5z"/></symbol>
+      <symbol id="i-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></symbol>
+      <symbol id="i-archive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="5" rx="1"/><path d="M5 8v11a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8M10 12h4"/></symbol>
+      <symbol id="i-branch" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="8" r="2.5"/><path d="M6 8.5v7M18 10.5c0 4-6 3-11 6"/></symbol>
+      <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+      <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></symbol>
+      <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+      <symbol id="i-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></symbol>
+      <symbol id="i-terminal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 17 6-6-6-6M12 19h8"/></symbol>
+      <symbol id="i-cpu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></symbol>
+      <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+      <symbol id="i-map" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></symbol>
+      <symbol id="i-package" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></symbol>
+      <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></symbol>
+      <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></symbol>
+      <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+      <symbol id="i-stop" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/></symbol>
+      <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/><path d="M21 3v5h-5"/></symbol>
+      <symbol id="i-share" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></symbol>
+      <symbol id="i-message" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+      <symbol id="i-plug" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0zM12 18v4"/></symbol>
+      <symbol id="i-bot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V4M9 14h.01M15 14h.01M2 13v3M22 13v3"/><circle cx="12" cy="3" r="1"/></symbol>
+      <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></symbol>
+      <symbol id="i-hourglass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h12M6 22h12M7 2v4a5 5 0 0 0 10 0V2M7 22v-4a5 5 0 0 1 10 0v4"/></symbol>
+    </defs>
+  </svg>
+
+
+  <script src="app.js"></script>
+</body>
+</html>

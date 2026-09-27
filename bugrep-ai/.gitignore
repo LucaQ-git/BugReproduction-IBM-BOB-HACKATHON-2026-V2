@@ -1,0 +1,13 @@
+# Dependencies
+node_modules/
+
+# Secrets — NEVER commit
+.env
+
+# Run workspaces, uploads, demo runtime workspace, logs and reports
+runs/
+.bugrep/
+
+# OS files
+.DS_Store
+Thumbs.db
