@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@ibm-cloud/watsonx-ai": "^1.7.16",
+    "@vercel/functions": "^3.9.9",
     "adm-zip": "^0.5.16",
     "diff": "^7.0.0",
     "dotenv": "^16.4.5",

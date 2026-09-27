@@ -21,6 +21,16 @@ const integrations = require('../integrations');
 const { ACTIVE } = require('../workflow/errors');
 const { redact } = require('../workflow/redact');
 
+// On Vercel, IDE-workspace runs would read the function's own filesystem, so they are disabled.
+const SERVERLESS = !!process.env.VERCEL;
+
+/** Keep work alive after the response is sent. On Vercel, waitUntil stops the function from freezing. */
+function background(promise) {
+  const p = Promise.resolve(promise).catch(err => console.error('[bugrep] background task failed:', redact(err.message || String(err))));
+  if (SERVERLESS) require('@vercel/functions').waitUntil(p);
+  return p;
+}
+
 function createApp() {
   const app = express();
   app.disable('x-powered-by');
@@ -44,7 +54,8 @@ function createApp() {
         watsonx: { ready: wx.operational, detail: wx.detail },
       },
       integrations: integrations.status(),
-      defaultLocalPath: sources.defaultLocalPath(),
+      defaultLocalPath: SERVERLESS ? '' : sources.defaultLocalPath(),
+      localSource: !SERVERLESS,
     });
   }));
 
@@ -80,9 +91,12 @@ function createApp() {
   // ── runs ───────────────────────────────────────────────────────────────────
   app.post('/api/runs', wrap(async (req, res) => {
     const { source, bugReport, rules, options } = req.body || {};
+    if (SERVERLESS && source && source.type === 'local') {
+      return fail(res, 400, 'IDE Workspace is not available on the hosted version. Use GitHub or Upload ZIP.');
+    }
     const run = await pipeline.createRun({ source, bugReport, rules, options });
     res.status(202).json({ id: run.id, runId: run.id, stage: run.state.stage, status: run.state.status });
-    run.start();
+    background(run.start());
   }));
 
   app.get('/api/runs', (req, res) => res.json(pipeline.listRuns({ includeDismissed: req.query.all === '1' })));
@@ -159,7 +173,7 @@ function createApp() {
     if (!(s.status === 'repair-not-verified' || (['failed', 'timed-out', 'cancelled'].includes(s.status) && s.red && s.red.outcome === 'fail' && s.tests))) {
       return fail(res, 409, 'Retry Fix is only available after the bug was reproduced and the repair did not succeed.');
     }
-    run.retryFix();
+    background(run.retryFix());
     res.status(202).json({ id: run.id, status: 'running' });
   }));
 
@@ -170,7 +184,7 @@ function createApp() {
     const run = await pipeline.createRun({ source: { ...s.sourceSpec }, bugReport: s.bugReport, rules: s.rules,
       options: { ...s.options, agents: s.options.agents } });
     res.status(202).json({ id: run.id });
-    run.start();
+    background(run.start());
   }));
 
   app.get('/api/runs/:id/diff', (req, res) => {

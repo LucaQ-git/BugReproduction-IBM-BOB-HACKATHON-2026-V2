@@ -127,6 +127,22 @@ bugrep-ai/
 └── runs/                       per-run folders (git-ignored)
 ```
 
+## Deploy to Vercel
+
+1. Import the repo in Vercel and set **Root Directory** to `bugrep-ai`. `vercel.json` handles the rest: the UI is
+   served from `web/public` and every `/api/*` route goes to one Express function (`api/index.js`, 300 s max).
+2. Add your environment variables (see `env.example`) in the project settings. Set `PUBLIC_BASE_URL` to the deployment URL.
+3. Deploy (`vercel --prod`, or push to the connected branch).
+
+Limits on the hosted version:
+- **IDE Workspace is disabled.** Use GitHub or Upload ZIP (Vercel caps request bodies at 4.5 MB).
+- **The Bob Shell CLI is not on Vercel's runtime.** Use watsonx, or point `BOB_CLI_PATH` at a binary you bundle.
+  pytest is not available either, so only Jest (JavaScript) projects can be tested.
+- **Runs live in `/tmp` and in memory on one function instance.** A run must finish within 300 s, including the time it
+  waits for approval. Later requests (approve, SSE, downloads) can land on another instance that has never seen the run.
+  For reliable runs, host it as a long-running Node server instead (`npm start` with `HOST=0.0.0.0`).
+- The deployment is public by default. Turn on Vercel Deployment Protection so nobody else spends your AI credits.
+
 ## Known limitations
 
 - IBM Bob behaviour (speed, answer quality, exact CLI flags) depends on your Bob Shell install. BugRep's automated tests use

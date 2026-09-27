@@ -114,6 +114,12 @@ async function refreshMeta() {
     chip.innerHTML = `<span class="dot"></span>IBM Bob ${bob && bob.operational ? esc(bob.version || '') : '· unavailable'}`;
     const lp = $('#local-path');
     if (!lp.value) lp.value = h.defaultLocalPath || '';
+    // Hosted (Vercel) build: no local folders, so switch to GitHub.
+    const localTab = $('#source-tabs .seg-btn[data-source="local"]');
+    if (h.localSource === false && localTab && !localTab.classList.contains('hidden')) {
+      localTab.classList.add('hidden');
+      if (app.source === 'local') $('#source-tabs .seg-btn[data-source="github"]').click();
+    }
     const sel = $('#opt-agent');
     const cur = sel.value || 'bob';
     sel.innerHTML = agents.map(a => `<option value="${a.id}" ${a.operational ? '' : 'disabled'}>${esc(a.name)}${a.operational ? (a.experimental ? ' (experimental)' : '') : a.implemented ? ' (not configured)' : ' (coming soon)'}</option>`).join('');

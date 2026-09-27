@@ -1,0 +1,6 @@
+# Never upload secrets or local run data
+.env
+.env.*
+runs/
+.bugrep/
+node_modules/
