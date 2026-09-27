@@ -1,7 +1,8 @@
 FROM node:20-slim
 
-# Install Bob Shell globally (same package as local install)
-RUN npm install -g bobshell@2.0.5
+# Install Bob Shell via the official IBM installer script
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+RUN curl -fsSL https://bob.ibm.com/download/bobshell.sh | bash
 
 WORKDIR /app
 
