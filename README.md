@@ -8,7 +8,7 @@
 - Luca Quacquarelli
 - Parjad Minooei
 - Eman Butt
-- Vincent Lee
+- Vincent Le
 - Exodus
 
 BugRep-AI turns a plain-English bug report and a codebase into a verified, human-approved code repair — powered by IBM Bob agents, proven by real tests, and shareable to Jira, Slack, or Teams.
