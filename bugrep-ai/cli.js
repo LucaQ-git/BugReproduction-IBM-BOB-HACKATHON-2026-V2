@@ -1,16 +1,16 @@
 #!/usr/bin/env node
-// cli.js — run the BugRep-AI pipeline from a terminal (e.g. inside IBM Bob IDE)
+// cli.js — run the BugRep-AI pipeline from a terminal (e.g. inside IBM Bob IDE).
 //
-//   node cli.js run --demo                        bundled demo (works without API keys)
-//   node cli.js run --path . --bug "text"          your local project / IDE workspace
-//   node cli.js run --github <url> --bug-file f    a GitHub repository
-//   node cli.js run --zip project.zip --bug "…"    a ZIP archive
-//   node cli.js runs                               list recent runs
+//   node cli.js run --demo                         controlled live demo (needs IBM Bob)
+//   node cli.js run --path . --bug "text"           your local project / IDE workspace
+//   node cli.js run --github <url> --bug-file f     a GitHub repository
+//   node cli.js run --zip project.zip --bug "…"     a ZIP archive
+//   node cli.js preflight                           demo preflight checks (no Bob calls)
+//   node cli.js runs                                list recent runs
 //
-// Options: --rules "<expected behaviour>" | --rules-file f
-//          --engine auto|bob|watsonx|replay   --yes (auto-approve)
-//          --write-back (local only: write the fix into your folder)
-//          --no-tests (don't include the regression test in the output)
+// Options: --rules "<expected behaviour>" | --rules-file f   --agent bob   --yes (auto-approve)
+//          --write-back (local only)   --no-tests
+// Ctrl+C stops the run (kills the running process, nothing is applied).
 
 'use strict';
 
@@ -19,19 +19,18 @@ const path     = require('path');
 const readline = require('readline');
 const pipeline = require('./workflow/pipeline');
 const sources  = require('./workflow/sources');
+const demo     = require('./workflow/demo');
 
-const C = process.stdout.isTTY
-  ? { red: s => `\x1b[31m${s}\x1b[0m`, green: s => `\x1b[32m${s}\x1b[0m`, dim: s => `\x1b[2m${s}\x1b[0m`,
-      bold: s => `\x1b[1m${s}\x1b[0m`, cyan: s => `\x1b[36m${s}\x1b[0m`, yellow: s => `\x1b[33m${s}\x1b[0m` }
-  : { red: s => s, green: s => s, dim: s => s, bold: s => s, cyan: s => s, yellow: s => s };
+const tty = process.stdout.isTTY;
+const c = (code, s) => (tty ? `\x1b[${code}m${s}\x1b[0m` : s);
+const C = { red: s => c(31, s), green: s => c(32, s), yellow: s => c(33, s), cyan: s => c(36, s), dim: s => c(2, s), bold: s => c(1, s) };
 
 function parseArgs(argv) {
   const out = { _: [] };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (!a.startsWith('--')) { out._.push(a); continue; }
-    const key = a.slice(2);
-    const next = argv[i + 1];
+    const key = a.slice(2), next = argv[i + 1];
     if (next === undefined || next.startsWith('--')) out[key] = true;
     else { out[key] = next; i++; }
   }
@@ -40,17 +39,18 @@ function parseArgs(argv) {
 
 function usage() {
   console.log(`
-${C.bold('BugRep-AI')} — AI agents that reproduce, fix and report bugs
+${C.bold('BugRep-AI')}: AI agents that reproduce, repair and verify bugs
 
   node cli.js run --demo [--yes]
   node cli.js run --path <folder> --bug "<bug report>" [--write-back]
   node cli.js run --github <url> --bug-file bug.txt
   node cli.js run --zip project.zip --bug "<bug report>"
+  node cli.js preflight
   node cli.js runs
 
   --rules "<text>" | --rules-file <file>   expected behaviour / business rules
-  --engine auto|bob|watsonx|replay         AI engine (default auto)
-  --yes                                    approve the verified fix automatically
+  --agent bob                              AI agent (default: IBM Bob)
+  --yes                                    approve the verified repair automatically
   --no-tests                               leave the regression test out of the output
 `);
 }
@@ -67,6 +67,8 @@ function colorDiff(diff) {
     l.startsWith('@@') ? C.cyan(l) : C.dim(l)).join('\n');
 }
 
+const EXIT = { completed: 0, rejected: 2, 'not-reproduced': 4, 'repair-not-verified': 5, cancelled: 6, 'timed-out': 7 };
+
 async function cmdRun(args) {
   let source;
   if (args.demo) source = { type: 'demo' };
@@ -76,37 +78,50 @@ async function cmdRun(args) {
 
   let bug = typeof args.bug === 'string' ? args.bug : '';
   if (args['bug-file']) bug = fs.readFileSync(args['bug-file'], 'utf8');
-  if (!bug && source.type === 'demo') bug = fs.readFileSync(path.join(__dirname, 'demo', 'bug_report.txt'), 'utf8');
-  if (!bug) { console.error(C.red('Please give a bug report with --bug "…" or --bug-file <file>.')); process.exit(3); }
-
+  if (!bug && source.type !== 'demo') { console.error(C.red('Please give a bug report with --bug "…" or --bug-file <file>.')); process.exit(3); }
   let rules = typeof args.rules === 'string' ? args.rules : '';
   if (args['rules-file']) rules = fs.readFileSync(args['rules-file'], 'utf8');
 
-  const run = pipeline.createRun({
-    source, bugReport: bug, rules,
-    options: {
-      engine: typeof args.engine === 'string' ? args.engine : 'auto',
-      autoApprove: !!args.yes,
-      writeBack: !!args['write-back'],
-      includeTests: !args['no-tests'],
-    },
-  });
+  if (source.type === 'demo') {
+    const pf = await demo.preflight();
+    for (const ch of pf.checks) console.log(`  ${ch.ok ? C.green('✓') : C.red('✗')} ${ch.label} ${C.dim(ch.detail)}`);
+    if (!pf.ok) { console.error(C.red(`\nDEMO CANNOT START: ${pf.reason}`)); process.exit(3); }
+  }
 
-  console.log(`\n${C.bold('🐞 BugRep-AI')}  run ${C.cyan(run.id)}\n`);
-  const icons = { 'Test Agent': '🧪', 'Fix Agent': '🛠 ', Runner: '▶ ', system: '• ' };
+  let run;
+  try {
+    run = await pipeline.createRun({
+      source, bugReport: bug, rules,
+      options: { agents: [typeof args.agent === 'string' ? args.agent : 'bob'], autoApprove: !!args.yes,
+        writeBack: !!args['write-back'], includeTests: !args['no-tests'] },
+    });
+  } catch (err) {
+    console.error(C.red(err.message));
+    process.exit(3);
+  }
+
+  console.log(`\n${C.bold('🐞 BugRep-AI')}  run ${C.cyan(run.id)}  ${C.dim('(Ctrl+C to stop)')}\n`);
+  const icon = { investigator: '🔎', repairer: '🛠 ', runner: '▶ ', system: '• ' };
   run.on('log', e => {
-    const line = `${icons[e.agent] || '• '} ${C.dim(e.agent.padEnd(10))} ${e.text}`;
+    const line = `${icon[e.role] || '• '} ${C.dim(String(e.agent === 'system' ? 'BugRep' : e.agent).padEnd(22))} ${e.text}`;
     console.log(e.level === 'error' ? C.red(line) : e.level === 'warn' ? C.yellow(line) : line);
   });
-
   run.on('state', async s => {
     if (s.status === 'awaiting-approval' && !run._asked) {
       run._asked = true;
-      console.log(`\n${C.bold('Proposed fix')} ${C.dim('(verified: ' + s.green.passed + '/' + s.green.total + ' tests pass)')}\n`);
+      console.log(`\n${C.bold('Proposed repair')} ${C.dim(`(verified: ${s.green.passed}/${s.green.total} locked tests pass)`)}\n`);
       console.log(colorDiff(s.diff));
-      const a = await ask(`\n${C.bold('Apply this fix?')} [y/N] `);
-      run.decide(a === 'y' || a === 'yes' ? 'approved' : 'rejected', 'CLI reviewer');
+      if (s.diffMeta && s.diffMeta.truncated) console.log(C.yellow(`\n(diff truncated for display: full patch in runs/${s.id}/fix.patch)`));
+      const a = await ask(`\n${C.bold('Apply this repair?')} [y/N] `);
+      try { run.decide(a === 'y' || a === 'yes' ? 'approved' : 'rejected', 'CLI reviewer'); } catch { /* already ended */ }
     }
+  });
+  let stopping = false;
+  process.on('SIGINT', () => {
+    if (stopping) process.exit(130);
+    stopping = true;
+    console.log(C.yellow('\nStopping run…'));
+    try { run.cancel('CLI user'); } catch { process.exit(130); }
   });
 
   const done = new Promise(res => run.on('end', res));
@@ -114,32 +129,41 @@ async function cmdRun(args) {
   const s = await done;
 
   console.log('');
-  if (s.status === 'done') {
-    console.log(C.green(C.bold(`✅ Fixed & verified — RED ${s.red.failed} failing → GREEN ${s.green.passed}/${s.green.total} passing`)));
-    console.log(`   Fixed code : ${s.artifacts.fixedZip}`);
-    console.log(`   Patch      : ${s.artifacts.patch}`);
-  } else if (s.status === 'not-reproduced') {
-    console.log(C.yellow('ℹ️  Bug not reproduced — the generated tests all pass on the current code.'));
-  } else if (s.status === 'rejected') {
-    console.log(C.yellow('✋ Fix rejected — nothing was changed.'));
-  } else {
-    console.log(C.red(`❌ ${s.error || 'Run failed'}`));
-  }
-  if (s.artifacts.reportMd) console.log(`   Report     : ${s.artifacts.reportMd}`);
+  const msg = {
+    completed: C.green(C.bold(`✅ VERIFIED REPAIR: RED ${s.red?.failed} failing → GREEN ${s.green?.passed}/${s.green?.total} passing (final GREEN ${s.finalGreen?.passed}/${s.finalGreen?.total})`)),
+    rejected: C.yellow('✋ Repair rejected: nothing was changed.'),
+    'not-reproduced': C.yellow('ℹ️  Bug NOT reproduced: the tests ran and all passed on the original code.'),
+    'repair-not-verified': C.yellow(`⚠️  Repair NOT verified: ${s.green?.failed ?? '?'} locked test(s) still fail. Nothing applied. Retry Fix from the web UI.`),
+    'timed-out': C.red(`⏱️  RUN TIMED OUT at stage "${s.failedStage}": ${s.error}`),
+    cancelled: C.yellow('⏹️  RUN CANCELLED: nothing was applied.'),
+  }[s.status] || C.red(`❌ RUN FAILED (${s.errorType}) at "${s.failedStage}": ${s.error}`);
+  console.log(msg);
+  if (s.artifacts.fixedZip) console.log(`   Fixed code : ${path.join(pipeline.runDir(s.id), 'fixed-code.zip')}\n   Patch      : ${path.join(pipeline.runDir(s.id), 'fix.patch')}`);
+  if (s.artifacts.reportMd) console.log(`   Report     : ${path.join(pipeline.runDir(s.id), 'report.md')}`);
+  console.log(C.dim(`   IBM Bob calls: ${s.bobCallCount}`));
   console.log('');
-  process.exit({ done: 0, rejected: 2, 'not-reproduced': 4 }[s.status] ?? 1);
+  process.exit(EXIT[s.status] ?? 1);
 }
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const cmd = args._[0];
   if (cmd === 'run') return cmdRun(args);
+  if (cmd === 'preflight') {
+    const pf = await demo.preflight();
+    for (const ch of pf.checks) console.log(`${ch.ok ? C.green('✓') : C.red('✗')} ${ch.label} ${C.dim(ch.detail)}`);
+    console.log(pf.ok ? C.green('\nDemo ready.') : C.red(`\nDEMO CANNOT START: ${pf.reason}`));
+    process.exit(pf.ok ? 0 : 3);
+  }
   if (cmd === 'runs') {
-    for (const r of pipeline.listRuns(20)) console.log(`${r.id}  ${r.status.padEnd(15)} ${r.source.label}  ${C.dim(r.bug.slice(0, 60))}`);
+    pipeline.recoverStaleRuns();
+    for (const r of pipeline.listRuns({ limit: 30 })) {
+      console.log(`${r.id}  ${r.status.padEnd(20)} ${String(r.agent?.name || '').padEnd(10)} ${r.source.label}  ${C.dim(r.bug.slice(0, 50))}`);
+    }
     return;
   }
   usage();
   process.exit(cmd ? 3 : 0);
 }
 
-main().catch(err => { console.error(C.red(err.stack || err.message)); process.exit(3); });
+main().catch(err => { console.error(C.red(err.stack || err.message)); process.exit(1); });

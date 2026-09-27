@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BugRep AI</title>
-  <meta name="description" content="AI agents that reproduce, fix and verify bugs from a plain-English bug report." />
+  <title>BugRep-AI</title>
+  <meta name="description" content="From bug report to verified repair: AI agents reproduce, repair and verify bugs, with human approval." />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%237c5cff'/><stop offset='1' stop-color='%2322d3ee'/></linearGradient></defs><rect width='32' height='32' rx='8' fill='url(%23g)'/><path d='M11 13h10v7a5 5 0 0 1-10 0z M13 13a3 3 0 0 1 6 0 M8 17h3 M21 17h3 M9 23l2-1 M23 23l-2-1 M16 15v9' stroke='white' stroke-width='1.8' fill='none' stroke-linecap='round'/></svg>" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -15,247 +15,236 @@
   <div class="bg-glow" aria-hidden="true"></div>
   <div class="bg-grid" aria-hidden="true"></div>
 
-  <!-- ───────────── Top bar ───────────── -->
   <header class="topbar">
-    <a class="brand" href="#" data-nav="home" aria-label="BugRep AI home">
+    <a class="brand" href="#/" aria-label="BugRep-AI home">
       <span class="brand-mark"><svg viewBox="0 0 24 24"><use href="#i-bug"/></svg></span>
-      <span class="brand-text">BugRep <b>AI</b></span>
-      <span class="brand-sub">powered by IBM Bob</span>
+      <span class="brand-text">BugRep<b>-AI</b></span>
     </a>
+    <nav class="mainnav" aria-label="Main">
+      <a href="#/" data-view="home" class="active"><svg><use href="#i-folder"/></svg><span>Projects</span></a>
+      <a href="#runs" data-view="runs"><svg><use href="#i-clock"/></svg><span>Runs</span><em class="nav-badge hidden" id="nav-active"></em></a>
+      <a href="#agents" data-view="agents"><svg><use href="#i-bot"/></svg><span>Agents</span></a>
+      <a href="#integrations" data-view="integrations"><svg><use href="#i-plug"/></svg><span>Integrations</span></a>
+      <a href="#reports" data-view="reports"><svg><use href="#i-file"/></svg><span>Reports</span></a>
+    </nav>
     <div class="topbar-right">
-      <div class="engine-chips" id="engine-chips">
-        <span class="chip chip-muted"><span class="dot"></span>Checking engines…</span>
-      </div>
-      <button class="icon-btn" id="btn-runs" title="Recent runs" aria-label="Recent runs"><svg><use href="#i-clock"/></svg></button>
+      <span class="chip chip-muted" id="bob-chip"><span class="dot"></span>IBM Bob…</span>
       <button class="icon-btn" id="btn-theme" title="Toggle theme" aria-label="Toggle theme"><svg><use href="#i-moon"/></svg></button>
     </div>
   </header>
 
-  <!-- ───────────── Home ───────────── -->
+  <!-- ═════════ PROJECTS (home) ═════════ -->
   <main id="view-home" class="view active">
     <section class="hero">
       <div class="hero-copy">
-        <span class="eyebrow"><svg><use href="#i-sparkle"/></svg> Autonomous bug repair</span>
-        <h1>Bug report in.<br/><span class="grad-text">Verified fix out.</span></h1>
-        <p class="lead">Point BugRep at your code, describe the bug in plain English, and a team of AI agents
-          finds the defect, proves it with failing tests, writes the fix and verifies it, before anything touches your code.</p>
+        <span class="eyebrow"><svg><use href="#i-sparkle"/></svg> Autonomous bug repair · powered by IBM Bob</span>
+        <h1>BugRep-AI<br/><span class="grad-text">From bug report to verified repair.</span></h1>
+        <p class="lead">Describe a bug in plain English. AI agents find the defect, prove it with failing tests,
+          write a fix and prove it with the <b>same locked tests</b>. Nothing touches your code until you approve.</p>
         <div class="hero-actions">
-          <button class="btn btn-primary btn-lg" id="btn-demo">
-            <svg><use href="#i-play"/></svg> Run live demo
-          </button>
-          <a class="btn btn-ghost btn-lg" href="#new-run"><svg><use href="#i-bug"/></svg> Fix my code</a>
+          <button class="btn btn-primary btn-lg" id="btn-demo"><svg><use href="#i-play"/></svg> Run Live Demo</button>
+          <a class="btn btn-ghost btn-lg" href="#new-run"><svg><use href="#i-bug"/></svg> Analyze my code</a>
         </div>
         <div class="hero-proof">
-          <span><svg><use href="#i-shield"/></svg> Works on an isolated copy</span>
-          <span><svg><use href="#i-lock"/></svg> Tests locked before fixing</span>
-          <span><svg><use href="#i-check"/></svg> You approve every change</span>
+          <span><svg><use href="#i-shield"/></svg> Isolated sandbox copy</span>
+          <span><svg><use href="#i-lock"/></svg> Tests locked by SHA-256</span>
+          <span><svg><use href="#i-check"/></svg> Human approval required</span>
         </div>
       </div>
-
       <div class="hero-visual" aria-hidden="true">
         <div class="orbit">
-          <div class="agent-node n1"><svg><use href="#i-search"/></svg><span>Locate</span></div>
-          <div class="agent-node n2"><svg><use href="#i-flask"/></svg><span>Test</span></div>
-          <div class="agent-node n3"><svg><use href="#i-wrench"/></svg><span>Fix</span></div>
-          <div class="agent-node n4"><svg><use href="#i-file"/></svg><span>Report</span></div>
-          <div class="orbit-core">
-            <div class="core-red">RED</div>
-            <svg class="core-arrow"><use href="#i-arrow"/></svg>
-            <div class="core-green">GREEN</div>
-          </div>
+          <div class="agent-node n1"><svg><use href="#i-search"/></svg><span>Investigate</span></div>
+          <div class="agent-node n2"><svg><use href="#i-flask"/></svg><span>Reproduce</span></div>
+          <div class="agent-node n3"><svg><use href="#i-wrench"/></svg><span>Repair</span></div>
+          <div class="agent-node n4"><svg><use href="#i-share"/></svg><span>Share</span></div>
+          <div class="orbit-core"><div class="core-red">RED</div><svg class="core-arrow"><use href="#i-arrow"/></svg><div class="core-green">GREEN</div></div>
         </div>
       </div>
     </section>
 
     <section class="card new-run" id="new-run">
-      <div class="card-head">
-        <div>
-          <h2>New run</h2>
-          <p class="muted">Three steps. The agents do the rest.</p>
-        </div>
-      </div>
-
+      <div class="card-head"><div><h2>Analyze &amp; repair</h2><p class="muted">Choose code, describe the bug, pick an agent.</p></div></div>
       <form id="run-form" autocomplete="off">
-        <!-- Step 1 -->
         <div class="step">
           <div class="step-num">1</div>
           <div class="step-body">
-            <label class="step-title">Where's the code?</label>
+            <label class="step-title">Choose code</label>
             <div class="seg" role="tablist" id="source-tabs">
-              <button type="button" role="tab" class="seg-btn active" data-source="local"><svg><use href="#i-folder"/></svg> Local / IDE</button>
+              <button type="button" role="tab" class="seg-btn active" data-source="local"><svg><use href="#i-folder"/></svg> IDE Workspace</button>
               <button type="button" role="tab" class="seg-btn" data-source="github"><svg><use href="#i-github"/></svg> GitHub</button>
               <button type="button" role="tab" class="seg-btn" data-source="zip"><svg><use href="#i-upload"/></svg> Upload ZIP</button>
             </div>
-
             <div class="source-panel active" data-panel="local">
-              <div class="input-wrap">
-                <svg><use href="#i-folder"/></svg>
-                <input id="local-path" type="text" placeholder="C:\path\to\your\project" spellcheck="false" />
-              </div>
-              <p class="hint">The folder open in your IDE. BugRep copies it to a sandbox, so nothing changes until you approve.</p>
-              <label class="check"><input type="checkbox" id="opt-writeback" /> <span>Write the approved fix back into this folder</span></label>
+              <div class="input-wrap"><svg><use href="#i-folder"/></svg><input id="local-path" type="text" placeholder="C:\path\to\your\project" spellcheck="false" /></div>
+              <p class="hint">The folder open in your IDE. BugRep works on a sandbox copy; nothing changes until you approve.</p>
+              <label class="check"><input type="checkbox" id="opt-writeback" /> <span>Write the approved repair back into this folder (originals are backed up)</span></label>
             </div>
-
             <div class="source-panel" data-panel="github">
               <div class="row-2">
-                <div class="input-wrap grow">
-                  <svg><use href="#i-github"/></svg>
-                  <input id="gh-url" type="text" placeholder="https://github.com/owner/repo" spellcheck="false" />
-                </div>
-                <div class="input-wrap narrow">
-                  <svg><use href="#i-branch"/></svg>
-                  <input id="gh-ref" type="text" placeholder="branch (optional)" spellcheck="false" />
-                </div>
+                <div class="input-wrap grow"><svg><use href="#i-github"/></svg><input id="gh-url" type="text" placeholder="https://github.com/owner/repo" spellcheck="false" /></div>
+                <div class="input-wrap narrow"><svg><use href="#i-branch"/></svg><input id="gh-ref" type="text" placeholder="branch (optional)" spellcheck="false" /></div>
               </div>
-              <p class="hint" id="gh-hint">Public repos work out of the box. For private repos add <code>GITHUB_TOKEN</code> to <code>.env</code>.</p>
+              <p class="hint">Public repos work out of the box. For private repos set <code>GITHUB_TOKEN</code> in <code>.env</code>.</p>
             </div>
-
             <div class="source-panel" data-panel="zip">
               <label class="dropzone" id="dropzone">
                 <input id="zip-input" type="file" accept=".zip,application/zip" hidden />
                 <div class="dz-icon"><svg><use href="#i-upload"/></svg></div>
                 <div class="dz-text"><b>Drop a .zip here</b> or click to browse</div>
-                <div class="dz-sub">Up to 60 MB · node_modules and .git are ignored</div>
+                <div class="dz-sub">Up to 60 MB · node_modules, .git and .env are ignored</div>
               </label>
-              <div class="file-pill hidden" id="zip-pill">
-                <svg><use href="#i-archive"/></svg><span id="zip-name"></span><span class="muted" id="zip-size"></span>
-                <button type="button" class="link" id="zip-clear">Remove</button>
-              </div>
+              <div class="file-pill hidden" id="zip-pill"><svg><use href="#i-archive"/></svg><span id="zip-name"></span><span class="muted" id="zip-size"></span><button type="button" class="link" id="zip-clear">Remove</button></div>
             </div>
           </div>
         </div>
-
-        <!-- Step 2 -->
         <div class="step">
           <div class="step-num">2</div>
           <div class="step-body">
-            <label class="step-title" for="bug-input">What's broken?</label>
-            <textarea id="bug-input" rows="4" placeholder="e.g. Applying a 200% coupon to a $10 cart shows a total of -$10.00 instead of $0.00. Empty carts show NaN."></textarea>
+            <label class="step-title" for="bug-input">Describe the bug</label>
+            <textarea id="bug-input" rows="4" placeholder="e.g. Invoice totals can become negative when customers use unusually large discounts. Totals should never be below zero and must be rounded to two decimals."></textarea>
             <details class="more">
               <summary><svg><use href="#i-chevron"/></svg> Expected behaviour / business rules <span class="muted">(optional)</span></summary>
               <textarea id="rules-input" rows="3" placeholder="e.g. Totals never go below 0. Missing discount means 0%. Round to 2 decimals."></textarea>
-              <p class="hint">BugRep also reads README and rules/spec docs it finds in your project.</p>
             </details>
           </div>
         </div>
-
-        <!-- Step 3 -->
         <div class="step">
           <div class="step-num">3</div>
           <div class="step-body">
-            <label class="step-title">Options</label>
-            <div class="options">
-              <div class="select-wrap">
-                <span class="select-label">AI engine</span>
-                <select id="opt-engine">
-                  <option value="auto">Auto (Bob Shell → watsonx)</option>
-                  <option value="bob">IBM Bob Shell</option>
-                  <option value="watsonx">IBM watsonx.ai</option>
-                </select>
+            <label class="step-title">AI agent</label>
+            <div class="agent-row">
+              <div class="select-wrap"><select id="opt-agent" aria-label="AI agent"><option value="bob">IBM Bob</option></select></div>
+              <div class="mode-radios" role="radiogroup" aria-label="Agent mode">
+                <label class="radio"><input type="radio" name="mode" value="single" checked /> <span>Single Agent</span></label>
+                <label class="radio disabled" title="Needs two or more operational agents"><input type="radio" name="mode" value="multi" disabled /> <span>Multi-Agent Review <em class="soon">coming soon</em></span></label>
               </div>
+            </div>
+            <div class="options">
               <label class="switch"><input type="checkbox" id="opt-tests" checked /><span class="track"></span><span>Include regression test in output</span></label>
-              <label class="switch"><input type="checkbox" id="opt-auto" /><span class="track"></span><span>Auto-approve verified fixes</span></label>
+              <label class="switch"><input type="checkbox" id="opt-auto" /><span class="track"></span><span>Auto-approve verified repairs</span></label>
             </div>
           </div>
         </div>
-
         <div class="form-foot">
           <p class="form-error hidden" id="form-error"></p>
-          <button class="btn btn-primary btn-lg" type="submit" id="btn-start">
-            <svg><use href="#i-sparkle"/></svg> Find &amp; fix the bug
-          </button>
+          <button class="btn btn-primary btn-lg" type="submit" id="btn-start"><svg><use href="#i-sparkle"/></svg> Analyze &amp; Repair</button>
         </div>
       </form>
     </section>
-
-    <section class="how">
-      <h3 class="section-label">How it works</h3>
-      <div class="how-grid">
-        <div class="how-card"><div class="how-ico ai"><svg><use href="#i-flask"/></svg></div><h4>Test Agent</h4><p>Reads your bug report and code, finds the faulty function and writes strict regression tests.</p></div>
-        <div class="how-card"><div class="how-ico red"><svg><use href="#i-x"/></svg></div><h4>Reproduce</h4><p>BugRep runs the tests on your original code. They must fail, which proves the bug is real.</p></div>
-        <div class="how-card"><div class="how-ico ai"><svg><use href="#i-wrench"/></svg></div><h4>Fix Agent</h4><p>Writes a minimal patch. It can't touch the locked tests; it can only change source code.</p></div>
-        <div class="how-card"><div class="how-ico green"><svg><use href="#i-check"/></svg></div><h4>Verify &amp; deliver</h4><p>The same tests now pass. You review the diff, then download the fixed code and report.</p></div>
-      </div>
-    </section>
   </main>
 
-  <!-- ───────────── Run view ───────────── -->
+  <!-- ═════════ RUN ═════════ -->
   <main id="view-run" class="view">
     <div class="run-head">
       <div class="run-head-left">
-        <button class="icon-btn" data-nav="home" title="Back" aria-label="Back"><svg><use href="#i-back"/></svg></button>
+        <a class="icon-btn" href="#runs" title="All runs" aria-label="All runs"><svg><use href="#i-back"/></svg></a>
         <div>
           <div class="run-title"><span id="run-source-label">…</span> <span class="status-pill" id="run-status">Starting</span></div>
-          <div class="run-meta"><span id="run-id"></span><span class="sep">·</span><span id="run-engine"></span><span class="sep">·</span><span id="run-elapsed">0s</span></div>
+          <div class="run-meta"><span id="run-id"></span><span class="sep">·</span><span id="run-agent"></span><span class="sep">·</span><span id="run-elapsed">0s</span></div>
         </div>
       </div>
       <div class="run-head-right">
         <span class="demo-badge hidden" id="demo-badge"><svg><use href="#i-play"/></svg> Live demo</span>
-        <button class="btn btn-ghost" data-nav="home"><svg><use href="#i-plus"/></svg> New run</button>
+        <button class="btn btn-stop hidden" id="btn-stop"><svg><use href="#i-stop"/></svg> Stop Run</button>
+        <a class="btn btn-ghost" href="#/"><svg><use href="#i-plus"/></svg> New run</a>
       </div>
     </div>
+
+    <ol class="stepper" id="stepper" aria-label="Run progress"></ol>
 
     <div class="run-grid">
-      <aside class="timeline card" id="timeline" aria-label="Pipeline progress"></aside>
-
-      <div class="run-main" id="run-main">
-        <section class="card bug-card">
-          <div class="label-row"><span class="section-label">Bug report</span></div>
-          <p id="run-bug" class="bug-text"></p>
-        </section>
-
-        <section class="card console-card" id="console-card">
+      <aside class="timeline card" id="timeline" aria-label="Pipeline stages"></aside>
+      <div class="run-main">
+        <section class="card now-card hidden" id="now-card" aria-live="polite"></section>
+        <section class="card bug-card"><div class="label-row"><span class="section-label">Bug report</span></div><p id="run-bug" class="bug-text"></p></section>
+        <section class="card console-card">
           <div class="card-head compact">
-            <div class="label-row"><span class="live-dot" id="live-dot"></span><span class="section-label">Agent activity</span></div>
+            <div class="label-row"><span class="live-dot" id="live-dot"></span><span class="section-label">Activity</span></div>
             <button class="link" id="console-toggle">Collapse</button>
           </div>
-          <div class="console" id="console" role="log" aria-live="polite"></div>
+          <div class="console" id="console" role="log"></div>
         </section>
-
-        <!-- progressive result cards get injected here -->
         <div id="cards"></div>
+        <section class="card share-card hidden" id="share-card"></section>
       </div>
     </div>
 
-    <!-- approval bar -->
-    <div class="approve-bar hidden" id="approve-bar" role="region" aria-label="Approve fix">
+    <div class="approve-bar hidden" id="approve-bar" role="region" aria-label="Approve repair">
       <div class="approve-inner">
         <div class="approve-info">
           <div class="approve-icon"><svg><use href="#i-shield"/></svg></div>
-          <div>
-            <b id="approve-title">Fix verified</b>
-            <div class="muted small" id="approve-sub">Review the diff, then approve or reject.</div>
-          </div>
+          <div><b id="approve-title">Repair verified</b><div class="muted small" id="approve-sub">Review the diff, then approve or reject.</div></div>
         </div>
         <div class="approve-opts">
+          <button class="link" id="btn-view-diff">View Diff</button>
           <label class="check small hidden" id="approve-wb-wrap"><input type="checkbox" id="approve-writeback" /> <span>Write to my folder</span></label>
           <label class="check small"><input type="checkbox" id="approve-tests" checked /> <span>Include test</span></label>
         </div>
         <div class="approve-actions">
           <button class="btn btn-danger-ghost" id="btn-reject"><svg><use href="#i-x"/></svg> Reject</button>
-          <button class="btn btn-success" id="btn-approve"><svg><use href="#i-check"/></svg> Approve &amp; deliver</button>
+          <button class="btn btn-success" id="btn-approve"><svg><use href="#i-check"/></svg> Approve</button>
         </div>
       </div>
     </div>
   </main>
 
-  <!-- Recent runs drawer -->
-  <div class="drawer-backdrop hidden" id="drawer-backdrop"></div>
-  <aside class="drawer" id="drawer" aria-label="Recent runs">
-    <div class="drawer-head"><h3>Recent runs</h3><button class="icon-btn" id="drawer-close" aria-label="Close"><svg><use href="#i-x"/></svg></button></div>
-    <div class="drawer-list" id="runs-list"><p class="muted">No runs yet.</p></div>
-  </aside>
+  <!-- ═════════ RUNS ═════════ -->
+  <main id="view-runs" class="view">
+    <div class="page-head"><div><h2>Runs</h2><p class="muted">Every run ends in an explicit state. Nothing retries automatically.</p></div>
+      <label class="check small"><input type="checkbox" id="runs-show-dismissed" /> <span>Show dismissed</span></label></div>
+    <div class="runs-table card" id="runs-table"></div>
+  </main>
+
+  <!-- ═════════ AGENTS ═════════ -->
+  <main id="view-agents" class="view">
+    <div class="page-head"><div><h2>AI agents</h2><p class="muted">IBM Bob is the operational agent. Other providers are shown for the roadmap and are never called.</p></div></div>
+    <div class="agent-grid" id="agent-grid"></div>
+    <section class="card info-card">
+      <h3>How multi-agent review will work</h3>
+      <div class="flow-mini">
+        <div><b>Investigators</b><span>A · B · C investigate independently</span></div><svg><use href="#i-arrow"/></svg>
+        <div><b>Compare findings</b><span>agreement on file / function</span></div><svg><use href="#i-arrow"/></svg>
+        <div><b>Repairers</b><span>each proposes a candidate</span></div><svg><use href="#i-arrow"/></svg>
+        <div><b>Test runner decides</b><span>same locked tests; no AI vote</span></div>
+      </div>
+      <p class="muted small">The orchestration interface is in place (<code>agents/index.js</code>). It turns on when two or more agents are operational.</p>
+    </section>
+  </main>
+
+  <!-- ═════════ INTEGRATIONS ═════════ -->
+  <main id="view-integrations" class="view">
+    <div class="page-head"><div><h2>Integrations</h2><p class="muted">Optional. Configured on the server in <code>.env</code>; secrets never reach the browser. Delivery never changes a repair's status.</p></div></div>
+    <div class="integ-grid" id="integ-grid"></div>
+  </main>
+
+  <!-- ═════════ REPORTS ═════════ -->
+  <main id="view-reports" class="view">
+    <div class="page-head"><div><h2>Reports</h2><p class="muted">Evidence reports (Markdown + JSON) for every finished run.</p></div></div>
+    <div class="runs-table card" id="reports-table"></div>
+  </main>
+
+  <!-- Demo modal -->
+  <div class="modal hidden" id="demo-modal" role="dialog" aria-modal="true" aria-label="Live demo">
+    <div class="modal-card demo-card">
+      <div class="modal-head"><h3><svg><use href="#i-play"/></svg> Live demo</h3><button class="icon-btn" data-close="demo-modal" aria-label="Close"><svg><use href="#i-x"/></svg></button></div>
+      <div class="demo-body">
+        <p class="muted">The demo runs the real pipeline with <b>IBM Bob</b> on a controlled shop-cart project with a known pricing bug. Preflight uses no Bob calls.</p>
+        <ul class="checklist" id="demo-checks"><li class="muted">Running preflight checks…</li></ul>
+        <div class="demo-verdict hidden" id="demo-verdict"></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" id="btn-demo-reset"><svg><use href="#i-refresh"/></svg> Reset Demo</button>
+        <button class="btn btn-primary" id="btn-demo-start" disabled><svg><use href="#i-play"/></svg> Start Live Demo</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Report modal -->
   <div class="modal hidden" id="report-modal" role="dialog" aria-modal="true" aria-label="Run report">
     <div class="modal-card">
-      <div class="modal-head">
-        <h3>Run report</h3>
-        <div class="modal-actions">
-          <a class="btn btn-ghost btn-sm" id="report-dl" href="#" download><svg><use href="#i-download"/></svg> .md</a>
-          <button class="icon-btn" id="report-close" aria-label="Close"><svg><use href="#i-x"/></svg></button>
-        </div>
-      </div>
+      <div class="modal-head"><h3>Run report</h3>
+        <div class="modal-actions"><a class="btn btn-ghost btn-sm" id="report-dl" href="#" download><svg><use href="#i-download"/></svg> .md</a>
+          <button class="icon-btn" data-close="report-modal" aria-label="Close"><svg><use href="#i-x"/></svg></button></div></div>
       <article class="md" id="report-body"></article>
     </div>
   </div>
@@ -297,8 +286,18 @@
       <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></symbol>
       <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></symbol>
       <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+      <symbol id="i-stop" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/></symbol>
+      <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/><path d="M21 3v5h-5"/></symbol>
+      <symbol id="i-share" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></symbol>
+      <symbol id="i-message" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+      <symbol id="i-plug" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0zM12 18v4"/></symbol>
+      <symbol id="i-bot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V4M9 14h.01M15 14h.01M2 13v3M22 13v3"/><circle cx="12" cy="3" r="1"/></symbol>
+      <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></symbol>
+      <symbol id="i-hourglass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h12M6 22h12M7 2v4a5 5 0 0 0 10 0V2M7 22v-4a5 5 0 0 1 10 0v4"/></symbol>
     </defs>
   </svg>
+
 
   <script src="app.js"></script>
 </body>

@@ -1,7 +1,7 @@
 {
   "name": "bugrep-ai",
-  "version": "3.0.0",
-  "description": "AI agents that find, reproduce, fix and report bugs from a plain-English bug report — powered by IBM Bob",
+  "version": "4.0.0",
+  "description": "BugRep-AI: from bug report to verified repair. IBM Bob agents reproduce, repair and verify bugs with human approval, plus Jira/Slack/Teams sharing.",
   "main": "web/server.js",
   "bin": {
     "bugrep": "./cli.js"
@@ -10,8 +10,9 @@
     "start": "node web/server.js",
     "web": "node web/server.js",
     "bugrep": "node cli.js",
-    "demo": "node cli.js run --demo --yes",
-    "test": "jest"
+    "preflight": "node cli.js preflight",
+    "demo": "node cli.js run --demo",
+    "test": "jest --runInBand"
   },
   "engines": {
     "node": ">=18"

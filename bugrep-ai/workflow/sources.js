@@ -12,15 +12,23 @@ const fs   = require('fs');
 const path = require('path');
 const ws   = require('./workspace');
 
-const ROOT      = path.resolve(__dirname, '..');
-const DEMO_DIR  = path.join(ROOT, 'demo', 'shop-cart');
-const UPLOADS   = path.join(ROOT, 'runs', '_uploads');
+const { ROOT, UPLOADS_DIR: UPLOADS, DEMO_WORKSPACE } = require('./paths');
+const { RunError } = require('./errors');
 
 /** Default folder suggestion for the "Local / IDE" source: the repository root. */
 function defaultLocalPath() {
   const repoRoot = path.resolve(ROOT, '..');
   return fs.existsSync(path.join(repoRoot, '.git')) || fs.existsSync(path.join(repoRoot, 'AGENTS.md'))
     ? repoRoot : ROOT;
+}
+
+/** Combine the run's cancel signal with a timeout (works on Node 18+). */
+function anySignal(signal, timeoutMs) {
+  const ac = new AbortController();
+  const t = setTimeout(() => ac.abort(Object.assign(new Error('timeout'), { name: 'TimeoutError' })), timeoutMs);
+  if (t.unref) t.unref();
+  if (signal) signal.addEventListener('abort', () => ac.abort(signal.reason), { once: true });
+  return ac.signal;
 }
 
 function parseGithubUrl(input) {
@@ -31,7 +39,7 @@ function parseGithubUrl(input) {
   return { owner: m[1], repo: m[2], ref: m[3] || null, subdir: m[4] || null };
 }
 
-async function fetchGithub({ url, ref }, dest, log) {
+async function fetchGithub({ url, ref }, dest, log, signal) {
   const gh = parseGithubUrl(url);
   const useRef = ref || gh.ref || '';
   log(`Downloading ${gh.owner}/${gh.repo}${useRef ? '@' + useRef : ''} from GitHub…`);
@@ -48,9 +56,13 @@ async function fetchGithub({ url, ref }, dest, log) {
   let res, lastErr;
   for (const a of attempts) {
     try {
-      res = await fetch(a.url, { headers: a.headers, redirect: 'follow' });
+      const timeoutMs = Number(process.env.FETCH_TIMEOUT_MS || 60000);
+      const sig = anySignal(signal, timeoutMs);
+      res = await fetch(a.url, { headers: a.headers, redirect: 'follow', signal: sig });
       if (res.ok) break;
     } catch (err) {
+      if (signal && signal.aborted) throw new RunError('cancelled', 'Download stopped by user.', { failedStage: 'acquire' });
+      if (err.name === 'TimeoutError' || (err.cause && err.cause.name === 'TimeoutError') || /timeout/i.test(String(err.message))) throw new RunError('timeout', 'GitHub download timed out.', { failedStage: 'acquire' });
       lastErr = err;
       res = null;
     }
@@ -63,7 +75,13 @@ async function fetchGithub({ url, ref }, dest, log) {
 
   const len = Number(res.headers.get('content-length') || 0);
   if (len > 80 * 1024 * 1024) throw new Error('Repository archive is larger than 80 MB.');
-  const buf = Buffer.from(await res.arrayBuffer());
+  let buf;
+  try {
+    buf = Buffer.from(await res.arrayBuffer());
+  } catch (err) {
+    if (signal && signal.aborted) throw new RunError('cancelled', 'Download stopped by user.', { failedStage: 'acquire' });
+    throw new RunError('timeout', 'GitHub download timed out.', { failedStage: 'acquire' });
+  }
   log(`Downloaded ${(buf.length / 1024).toFixed(0)} KB — unpacking…`);
 
   if (!gh.subdir) {
@@ -95,12 +113,15 @@ function saveUpload(buffer, originalName) {
  * Acquire code into `dest`. Returns { label, detail, localPath? }.
  * @param {{type:string, path?:string, url?:string, ref?:string, uploadId?:string, zipFile?:string}} source
  */
-async function acquire(source, dest, log = () => {}) {
+async function acquire(source, dest, log = () => {}, signal) {
   const type = source && source.type;
   if (type === 'demo') {
-    log('Loading the bundled demo project (shop-cart)…');
-    ws.copyProject(DEMO_DIR, dest);
-    return { label: 'Demo · shop-cart', detail: 'Bundled sample project with a known pricing bug' };
+    // The controlled demo workspace (built by demo reset from the template + buggy fixture).
+    const demo = require('./demo');
+    demo.ensureWorkspace();
+    log('Loading the controlled demo workspace (shop-cart)…');
+    ws.copyProject(DEMO_WORKSPACE, dest);
+    return { label: 'Demo · shop-cart', detail: 'Controlled demo project with a known pricing bug' };
   }
 
   if (type === 'local') {
@@ -114,7 +135,7 @@ async function acquire(source, dest, log = () => {}) {
   }
 
   if (type === 'github') {
-    const info = await fetchGithub(source, dest, log);
+    const info = await fetchGithub(source, dest, log, signal);
     return { label: info.label, detail: `ref: ${info.ref}` };
   }
 
@@ -140,4 +161,4 @@ async function acquire(source, dest, log = () => {}) {
   throw new Error(`Unknown source type "${type}". Use local, github, zip or demo.`);
 }
 
-module.exports = { acquire, saveUpload, parseGithubUrl, defaultLocalPath, DEMO_DIR };
+module.exports = { acquire, saveUpload, parseGithubUrl, defaultLocalPath };

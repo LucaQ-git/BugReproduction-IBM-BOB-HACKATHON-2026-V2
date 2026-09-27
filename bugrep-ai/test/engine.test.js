@@ -1,5 +1,5 @@
 // Unit tests for BugRep's own plumbing (run with: npm test)
-const { extractJson } = require('../workflow/engines');
+const { extractJson } = require('../agents/parse');
 const { classify } = require('../workflow/testrunner');
 const { safeJoin } = require('../workflow/workspace');
 const { parseGithubUrl } = require('../workflow/sources');
@@ -43,5 +43,17 @@ describe('safety', () => {
   test('parses GitHub URLs', () => {
     expect(parseGithubUrl('https://github.com/ibm/foo/tree/main/packages/bar')).toEqual({ owner: 'ibm', repo: 'foo', ref: 'main', subdir: 'packages/bar' });
     expect(parseGithubUrl('ibm/foo')).toMatchObject({ owner: 'ibm', repo: 'foo' });
+  });
+});
+
+describe('windows npm shim', () => {
+  const { shimScript } = require('../agents/bob');
+  test('finds the node script in a classic npm .cmd shim', () => {
+    const shim = '@IF EXIST "%~dp0\\node.exe" (\r\n  "%~dp0\\node.exe"  "%~dp0\\node_modules\\@ibm\\bob-shell\\dist\\index.js" %*\r\n) ELSE (\r\n  node  "%~dp0\\node_modules\\@ibm\\bob-shell\\dist\\index.js" %*\r\n)';
+    expect(shimScript(shim, '/npm').replace(/\\/g, '/')).toBe('/npm/node_modules/@ibm/bob-shell/dist/index.js');
+  });
+  test('finds the node script in a modern cmd-shim', () => {
+    const shim = '@ECHO off\r\nSET dp0=%~dp0\r\n"%_prog%"  "%dp0%\\node_modules\\bob\\bin\\bob.mjs" %*\r\n';
+    expect(shimScript(shim, '/npm').replace(/\\/g, '/')).toBe('/npm/node_modules/bob/bin/bob.mjs');
   });
 });

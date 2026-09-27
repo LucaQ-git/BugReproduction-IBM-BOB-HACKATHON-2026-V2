@@ -249,7 +249,7 @@ function keywords(text) {
  * Returns { tree, candidates:[{path, content, score}], docs:[{path, content}] }.
  */
 function buildContext(root, bugReport, opts = {}) {
-  const budget = opts.budget || 60000;
+  const budget = opts.budget || 36000; // smaller prompt = faster AI answers
   const project = opts.project || detectProject(root);
   const kw = keywords(bugReport);
   const lang = project.language;
@@ -279,7 +279,7 @@ function buildContext(root, bugReport, opts = {}) {
   const candidates = [];
   let used = 0;
   for (const f of scored) {
-    if (candidates.length >= 8) break;
+    if (candidates.length >= 5) break;
     if (used + f.content.length > budget && candidates.length > 0) continue;
     candidates.push(f);
     used += f.content.length;
@@ -304,7 +304,24 @@ function buildContext(root, bugReport, opts = {}) {
   return { tree, candidates, docs, project };
 }
 
+/** Third-party packages imported by the given files (ignores relative paths and Node built-ins). */
+function externalImports(files) {
+  const builtins = new Set(require('module').builtinModules);
+  const found = new Set();
+  const re = /(?:require\(\s*|from\s+|import\s+)['"]([^'"]+)['"]/g;
+  for (const f of files) {
+    for (const m of String(f.content || '').matchAll(re)) {
+      const spec = m[1];
+      if (spec.startsWith('.') || spec.startsWith('/') || spec.startsWith('node:')) continue;
+      const name = spec.startsWith('@') ? spec.split('/').slice(0, 2).join('/') : spec.split('/')[0];
+      if (!builtins.has(name)) found.add(name);
+    }
+  }
+  return [...found];
+}
+
 module.exports = {
+  externalImports,
   IGNORED_DIRS, LIMITS, sha256, sha256File, ensureDir, toPosix, listFiles, copyProject, copyTree,
   linkNodeModules, safeJoin, extractZip, zipWorkspace, readText, isTestPath, detectProject,
   buildContext,

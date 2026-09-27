@@ -12,25 +12,40 @@ function codeBlocks(files) {
   return files.map(f => `### FILE: ${f.path}\n\`\`\`\n${f.content}\n\`\`\``).join('\n\n');
 }
 
-function languageGuide(project, testPath) {
+function importHints(project, context) {
+  // Exact import lines for the relevant files, so the agent never guesses a wrong path
+  // (a wrong path makes the test unloadable and costs a whole extra AI call).
+  const files = context.candidates.slice(0, 5).map(c => c.path);
+  if (project.language === 'python') {
+    return files.map(f => `  - ${f}  →  import ${f.replace(/\.py$/, '').replace(/\//g, '.')}`).join('\n');
+  }
+  const esm = project.moduleType === 'esm';
+  return files.map(f => {
+    const rel = '../' + f.replace(/\.(c|m)?js$/, esm ? '.$1js' : '');
+    return `  - ${f}  →  ${esm ? `import { … } from '${rel.endsWith('.js') || rel.endsWith('.mjs') ? rel : rel + '.js'}'` : `const { … } = require('${rel}')`}`;
+  }).join('\n');
+}
+
+function languageGuide(project, testPath, context) {
   if (project.language === 'python') {
     return [
       `- Language: Python. Framework: pytest. The test file will be saved at \`${testPath}\`.`,
-      '- The project root is already on sys.path, so import project modules by their path from the root',
-      '  (e.g. `from src.cart import calculate_total` or `import cart`).',
+      '- The project root is on sys.path. Import project modules EXACTLY like this:',
+      importHints(project, context),
       '- Use plain `assert x == y` and `with pytest.raises(SomeError):`.',
     ].join('\n');
   }
   const esm = project.moduleType === 'esm';
   return [
     `- Language: JavaScript (${esm ? 'ES modules — use `import`' : 'CommonJS — use `require`'}). Framework: Jest (globals \`test\`, \`expect\`, \`describe\` are available; do not import them).`,
-    `- The test file will be saved at \`${testPath}\`, so import project files relative to it, e.g. \`${esm ? "import { fn } from '../src/file.js'" : "const { fn } = require('../src/file')"}\`.`,
+    `- The test file will be saved at \`${testPath}\`. Import project files EXACTLY like this (paths are relative to the test file):`,
+    importHints(project, context),
     '- Use only strict matchers: toBe, toEqual, toStrictEqual, toThrow, toBeCloseTo, toBeGreaterThanOrEqual, toBeLessThanOrEqual, toBeNaN, toHaveLength.',
   ].join('\n');
 }
 
 function testAgentPrompt({ bugReport, rules, context, project, testPath, previousError }) {
-  return `# Role: BugRep Test Agent
+  return `# Role: BugRep Investigator
 You are an expert QA engineer. Find the code responsible for a reported bug and write a
 regression test file that FAILS on the current (buggy) code and will PASS once the bug is fixed.
 
@@ -49,7 +64,7 @@ ${context.tree}
 ${codeBlocks(context.candidates)}
 
 ## Test-writing rules
-${languageGuide(project, testPath)}
+${languageGuide(project, testPath, context)}
 - Write 4–10 focused tests. At least one must reproduce the exact scenario in the bug report.
 - Assert the CORRECT expected behaviour (per the rules), never the current buggy output.
 - Never use weak assertions (toBeTruthy, toBeDefined, expect.anything, assert True), and never skip tests.
@@ -64,12 +79,13 @@ Return ONE JSON object and nothing else:
   "confidence": "high | medium | low",
   "analysis": "2-3 sentences: what is wrong and why",
   "tests": [ { "name": "test name exactly as in testCode", "why": "which rule / scenario it checks" } ],
+  "testFile": "${testPath}",
   "testCode": "the complete contents of ${testPath}"
 }`;
 }
 
 function fixAgentPrompt({ bugReport, rules, context, project, localization, testCode, failures, previousAttempt }) {
-  return `# Role: BugRep Fix Agent
+  return `# Role: BugRep Repairer
 You are a senior engineer. Make the MINIMAL correct change to the source code so that every
 test in the locked regression suite passes, while honouring all business rules.
 
@@ -79,7 +95,7 @@ ${fence('BUG_REPORT', bugReport)}
 ## Expected behaviour / business rules
 ${fence('RULES', [rules, ...context.docs.map(d => `From ${d.path}:\n${d.content}`)].filter(Boolean).join('\n\n'))}
 
-## Test Agent findings
+## Investigator findings
 - Suspected file: ${localization.file}
 - Suspected function: ${localization.function}
 - Analysis: ${localization.analysis}
@@ -109,8 +125,11 @@ Return ONE JSON object and nothing else:
 {
   "rootCause": "2-3 sentences citing file and line",
   "fixSummary": "one short paragraph describing the change",
-  "files": [ { "path": "relative/path.ext", "content": "complete new file contents" } ]
-}`;
+  "fixedCode": "the COMPLETE new contents of ${localization.file}",
+  "files": [ { "path": "other/file.ext", "content": "complete new contents" } ]
+}
+Use "fixedCode" for ${localization.file}. Only add "files" if another source file must also change; otherwise omit it.`;
 }
 
-module.exports = { testAgentPrompt, fixAgentPrompt };
+// Spec names: investigator / repairer
+module.exports = { testAgentPrompt, fixAgentPrompt, investigatorPrompt: testAgentPrompt, repairerPrompt: fixAgentPrompt };

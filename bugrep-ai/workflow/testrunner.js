@@ -7,27 +7,26 @@
 
 const fs    = require('fs');
 const path  = require('path');
-const { spawn } = require('child_process');
 
 const JEST_BIN = require.resolve('jest/bin/jest');
 
-function run(cmd, args, opts) {
-  return new Promise(resolve => {
-    let stdout = '', stderr = '', done = false;
-    let child;
-    try {
-      child = spawn(cmd, args, { ...opts, windowsHide: true });
-    } catch (err) {
-      return resolve({ code: 1, stdout, stderr, error: err.message });
-    }
-    const timer = setTimeout(() => {
-      if (!done) { child.kill(); stderr += '\n[BugRep] Test run timed out.'; }
-    }, opts.timeout || 120000);
-    child.stdout.on('data', d => { stdout += d; });
-    child.stderr.on('data', d => { stderr += d; });
-    child.on('error', err => { done = true; clearTimeout(timer); resolve({ code: 1, stdout, stderr, error: err.message }); });
-    child.on('close', code => { done = true; clearTimeout(timer); resolve({ code: code ?? 1, stdout, stderr, error: null }); });
-  });
+const { runProcess } = require('./proc');
+const { RunError } = require('./errors');
+
+function testTimeout() { return Number(process.env.TEST_TIMEOUT_MS || 120000); }
+
+/**
+ * Run a test command with a hard timeout. Timeouts and cancellation are thrown as
+ * RunErrors: they are NEVER reported as a RED (failing-test) result.
+ */
+async function run(cmd, args, opts) {
+  const timeoutMs = opts.timeout || testTimeout();
+  const r = await runProcess(cmd, args, { cwd: opts.cwd, env: opts.env, shell: opts.shell, timeoutMs, signal: opts.signal });
+  if (r.aborted) throw new RunError('cancelled', 'Test run stopped by user.', { failedStage: opts.stage });
+  if (r.timedOut) {
+    throw new RunError('timeout', `${opts.what || 'Test execution'} exceeded ${Math.round(timeoutMs / 1000)} seconds.`, { failedStage: opts.stage });
+  }
+  return { code: r.code ?? 1, stdout: r.stdout, stderr: r.stderr, error: r.error };
 }
 
 // A test that fails only because the test itself is broken (bad import, typo)
@@ -42,10 +41,11 @@ function classify(result) {
   return 'fail';
 }
 
-async function runJest(dir, testRel, project) {
+async function runJest(dir, testRel, project, ctl = {}) {
   const outFile = path.join(dir, '__bugrep__', `.jest-result-${Date.now()}.json`);
   const config = {
     rootDir: dir,
+    roots: ['<rootDir>/__bugrep__'], // only crawl the test folder: much faster on big projects
     testEnvironment: 'node',
     testMatch: ['**/__bugrep__/**/*.test.[cm]js', '**/__bugrep__/**/*.test.js'],
     transform: {},
@@ -60,15 +60,16 @@ async function runJest(dir, testRel, project) {
     '--json', '--outputFile', outFile,
     '--no-coverage', '--ci', '--watchman=false', '--forceExit', '--testTimeout=15000',
   ];
-  const r = await run(process.execPath, args, { cwd: dir, env: { ...process.env, NODE_ENV: 'test', FORCE_COLOR: '0' } });
+  const r = await run(process.execPath, args, { cwd: dir, env: { ...process.env, NODE_ENV: 'test', FORCE_COLOR: '0' }, signal: ctl.signal, stage: ctl.stage });
 
   let json = null;
   try { json = JSON.parse(fs.readFileSync(outFile, 'utf8')); } catch { /* handled below */ }
   try { fs.unlinkSync(outFile); } catch { /* ignore */ }
 
   if (!json) {
-    return finalize({ runner: 'jest', total: 0, passed: 0, failed: 0, suiteErrors: 1, tests: [],
-      output: tidy(r.stderr || r.stdout || r.error || 'Jest produced no result') });
+    // Jest itself did not run → environment failure, never "bug not reproduced".
+    return finalize({ runner: 'jest', total: 0, passed: 0, failed: 0, suiteErrors: 1, tests: [], launchError: true,
+      output: tidy(r.error ? `Could not launch Jest: ${r.error}` : (r.stderr || r.stdout || 'Jest produced no result')).slice(-4000) });
   }
   const tests = (json.testResults || []).flatMap(s => (s.assertionResults || []).map(t => ({
     name: t.title,
@@ -89,14 +90,14 @@ async function runJest(dir, testRel, project) {
   });
 }
 
-async function runPytest(dir, testRel) {
+async function runPytest(dir, testRel, ctl = {}) {
   const py = process.env.PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
   const xml = path.join(dir, '__bugrep__', `.pytest-${Date.now()}.xml`);
   const r = await run(py, ['-m', 'pytest', '-q', '-p', 'no:cacheprovider', `--junitxml=${xml}`, testRel],
-    { cwd: dir, env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1' } });
+    { cwd: dir, env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1' }, signal: ctl.signal, stage: ctl.stage });
 
   if (/No module named pytest/.test(r.stderr + r.stdout) || r.error) {
-    return finalize({ runner: 'pytest', total: 0, passed: 0, failed: 0, suiteErrors: 1, tests: [],
+    return finalize({ runner: 'pytest', total: 0, passed: 0, failed: 0, suiteErrors: 1, tests: [], launchError: true,
       output: r.error ? `Could not launch ${py}: ${r.error}` : 'pytest is not installed. Run: pip install pytest' });
   }
   let text = '';
@@ -146,17 +147,18 @@ function testFileFor(language, moduleType) {
   return moduleType === 'esm' ? '__bugrep__/bugrep.repro.test.mjs' : '__bugrep__/bugrep.repro.test.js';
 }
 
-async function runTests(dir, testRel, project) {
-  if (project.language === 'python') return runPytest(dir, testRel);
-  return runJest(dir, testRel, project);
+/** ctl = { signal, stage } */
+async function runTests(dir, testRel, project, ctl = {}) {
+  if (project.language === 'python') return runPytest(dir, testRel, ctl);
+  return runJest(dir, testRel, project, ctl);
 }
 
 /** Install JS dependencies into a workspace (scripts disabled for safety). */
-async function installDeps(dir, log) {
+async function installDeps(dir, log, ctl = {}) {
   const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
   log('Installing project dependencies (npm install --ignore-scripts)…');
   const r = await run(npm, ['install', '--ignore-scripts', '--no-audit', '--no-fund', '--loglevel=error'],
-    { cwd: dir, shell: process.platform === 'win32', timeout: 300000 });
+    { cwd: dir, shell: process.platform === 'win32', timeout: Number(process.env.INSTALL_TIMEOUT_MS || 300000), signal: ctl.signal, stage: 'index', what: 'npm install' });
   if (r.code !== 0) log(`npm install finished with warnings: ${tidy(r.stderr).split('\n').slice(-3).join(' ')}`);
   return r.code === 0;
 }
