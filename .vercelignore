@@ -1,0 +1,8 @@
+# Never upload secrets or local run data
+.env
+.env.*
+**/.env
+bugrep-ai/runs/
+bugrep-ai/.bugrep/
+**/node_modules/
+bob_sessions/
