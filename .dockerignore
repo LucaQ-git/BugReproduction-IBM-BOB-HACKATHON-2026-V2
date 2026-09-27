@@ -1,0 +1,10 @@
+bugrep-ai/node_modules
+bugrep-ai/runs
+bugrep-ai/.env
+bugrep-ai/server.log
+bugrep-ai/server-err.log
+.bob
+bob_sessions
+.git
+.gitignore
+.bobignore
