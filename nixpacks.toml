@@ -1,0 +1,8 @@
+[phases.setup]
+nixPkgs = ["nodejs_20"]
+
+[phases.install]
+cmds = ["cd bugrep-ai && npm install"]
+
+[start]
+cmd = "cd bugrep-ai && node web/server.js"
