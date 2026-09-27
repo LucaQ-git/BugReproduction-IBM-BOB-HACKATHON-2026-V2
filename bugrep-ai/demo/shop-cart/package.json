@@ -1,0 +1,7 @@
+{
+  "name": "shop-cart",
+  "version": "1.0.0",
+  "description": "Tiny checkout module used by the BugRep-AI demo",
+  "main": "src/cart.js",
+  "license": "MIT"
+}

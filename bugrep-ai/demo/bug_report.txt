@@ -1,0 +1,1 @@
+Checkout is showing impossible totals. When a customer applies a 200% promo code to a $10 cart the order total shows -$10.00, and an empty cart with a coupon (or a cart where no coupon is passed) shows NaN instead of $0.00. Totals should never go negative and should follow the pricing rules in docs/cart_rules.md.
